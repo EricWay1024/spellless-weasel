@@ -1,4 +1,5 @@
 ﻿#include "stdafx.h"
+#include <WeaselConstants.h>
 #include <resource.h>
 #include <thread>
 #include <shellapi.h>
@@ -37,9 +38,9 @@ static void HMENU2ITfMenu(HMENU hMenu, ITfMenu* pTfMenu) {
 static LPCWSTR GetWeaselRegName() {
   LPCWSTR WEASEL_REG_NAME_;
   if (is_wow64())
-    WEASEL_REG_NAME_ = L"Software\\WOW6432Node\\Rime\\Weasel";
+    WEASEL_REG_NAME_ = WEASEL_REG_KEY_WOW;
   else
-    WEASEL_REG_NAME_ = L"Software\\Rime\\Weasel";
+    WEASEL_REG_NAME_ = WEASEL_REG_KEY;
 
   return WEASEL_REG_NAME_;
 }
@@ -316,11 +317,11 @@ void WeaselTSF::_HandleLangBarMenuSelect(UINT wID) {
       }
       break;
     case ID_WEASELTRAY_USERCONFIG:
-      if (FAILED(RegGetStringValue(HKEY_CURRENT_USER, L"Software\\Rime\\Weasel",
+      if (FAILED(RegGetStringValue(HKEY_CURRENT_USER, WEASEL_REG_KEY,
                                    L"RimeUserDir", dir)) ||
           dir.empty()) {
         WCHAR _path[MAX_PATH] = {0};
-        ExpandEnvironmentStringsW(L"%AppData%\\Rime", _path, _countof(_path));
+        ExpandEnvironmentStringsW(WEASEL_USER_DIR_DEFAULT, _path, _countof(_path));
         dir = std::wstring(_path);
       }
       if (!dir.empty() && fs::exists(dir))

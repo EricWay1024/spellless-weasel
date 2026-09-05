@@ -1,4 +1,5 @@
 ﻿#include "stdafx.h"
+#include <WeaselConstants.h>
 
 #include <WeaselIPCData.h>
 #include <thread>
@@ -170,7 +171,7 @@ ExitError:
 
 STDMETHODIMP WeaselTSF::OnSetThreadFocus() {
   std::wstring _ToggleImeOnOpenClose{};
-  RegGetStringValue(HKEY_CURRENT_USER, L"Software\\Rime\\weasel",
+  RegGetStringValue(HKEY_CURRENT_USER, WEASEL_REG_KEY,
                     L"ToggleImeOnOpenClose", _ToggleImeOnOpenClose);
   _isToOpenClose = (_ToggleImeOnOpenClose == L"yes");
   if (m_client.Echo()) {
@@ -239,7 +240,7 @@ bool WeaselTSF::_EnsureServerConnected() {
     _Reconnect();
     retry++;
     if (retry >= 6) {
-      HANDLE hMutex = CreateMutex(NULL, TRUE, L"WeaselDeployerExclusiveMutex");
+      HANDLE hMutex = CreateMutex(NULL, TRUE, L"SpelllessDeployerExclusiveMutex");
       if (!m_client.Echo() && GetLastError() != ERROR_ALREADY_EXISTS) {
         std::wstring dir = _GetRootDir();
         std::thread th([dir, this]() {

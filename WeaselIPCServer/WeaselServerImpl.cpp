@@ -140,7 +140,9 @@ DWORD ServerImpl::OnCommand(WEASEL_IPC_COMMAND uMsg,
 }
 
 int ServerImpl::Start() {
-  std::wstring instanceName = L"(WEASEL)Furandōru-Sukāretto-";
+  // Per-product, or this server would take a stock Weasel's server for a
+  // second copy of itself and quietly exit -- which is exactly what it did.
+  std::wstring instanceName = L"(" WEASEL_CODE_NAME_W L")Furandōru-Sukāretto-";
   instanceName += getUsername();
   HANDLE hMutexOneInstance = ::CreateMutex(NULL, FALSE, instanceName.c_str());
   bool areYouOK = (::GetLastError() == ERROR_ALREADY_EXISTS ||

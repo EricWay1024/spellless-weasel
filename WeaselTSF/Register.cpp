@@ -31,7 +31,7 @@ HKL FindIME(LANGID langid) {
         ret = RegQueryValueExW(hSubKey, L"Ime File", NULL, &type, (LPBYTE)data,
                                &size);
         if (ret == ERROR_SUCCESS && type == REG_SZ &&
-            _wcsicmp(data, L"weasel.ime") == 0)
+            _wcsicmp(data, WEASEL_MODULE_BASE L".ime") == 0)
           hKL = (HKL)id;
       }
       RegCloseKey(hSubKey);
@@ -49,18 +49,6 @@ BOOL RegisterProfiles() {
   CComPtr<ITfInputProcessorProfileMgr> pInputProcessorProfileMgr;
   CHECK_HR(pInputProcessorProfileMgr.CoCreateInstance(
       CLSID_TF_InputProcessorProfiles, NULL, CLSCTX_ALL));
-  WCHAR szProfile[100];
-  std::wstring profile{};
-  DWORD dwSize = GetEnvironmentVariable(L"TEXTSERVICE_PROFILE", szProfile,
-                                        ARRAYSIZE(szProfile));
-  if (dwSize > 0) {
-    profile = szProfile;
-  }
-  BOOL hansEnable = (profile == L"hans");
-  BOOL hantEnable = (profile == L"hant");
-  // fallback hans enable
-  hansEnable = hansEnable || (!hantEnable && !hansEnable);
-
   const auto text_service_desc = get_weasel_ime_name();
   const WCHAR* text_service_desc_str = text_service_desc.c_str();
   ULONG text_service_desc_len = text_service_desc.size() * sizeof(wchar_t);
@@ -76,14 +64,14 @@ BOOL RegisterProfiles() {
         hkl, 0, enable, 0);
   };
 
-  const auto hkl_hans = FindIME(TEXTSERVICE_LANGID_HANS);
-  const auto hkl_hant = FindIME(TEXTSERVICE_LANGID_HANT);
-  CHECK_HR(register_profile(TEXTSERVICE_LANGID_HANS, hkl_hans, hansEnable));
-  CHECK_HR(register_profile(TEXTSERVICE_LANGID_HANT, hkl_hant, hantEnable));
-  // WeaselIME not support these languages, so HKL is NULL
-  CHECK_HR(register_profile(TEXTSERVICE_LANGID_HONGKONG, NULL, false));
-  CHECK_HR(register_profile(TEXTSERVICE_LANGID_MACAU, NULL, false));
-  CHECK_HR(register_profile(TEXTSERVICE_LANGID_SINGAPORE, NULL, false));
+  // One profile, under English.  Weasel registers five Chinese sublanguages
+  // because that is what it types; Spellless types English, and an English
+  // input method listed under Chinese can only be reached by first switching
+  // language, which defeats the point of installing it beside one.
+  //
+  // HKL is NULL: that argument associates a profile with an IMM32 keyboard
+  // layout, and this build installs no .ime at all.
+  CHECK_HR(register_profile(WEASEL_PROFILE_LANGID, NULL, TRUE));
 #undef CHECK_HR
 
   return TRUE;
@@ -98,11 +86,7 @@ void UnregisterProfiles() {
     pInputProcessorProfileMgr->UnregisterProfile(c_clsidTextService, id,
                                                  c_guidProfile, 0);
   };
-  unregister_profile(TEXTSERVICE_LANGID_HANS);
-  unregister_profile(TEXTSERVICE_LANGID_HANT);
-  unregister_profile(TEXTSERVICE_LANGID_HONGKONG);
-  unregister_profile(TEXTSERVICE_LANGID_MACAU);
-  unregister_profile(TEXTSERVICE_LANGID_SINGAPORE);
+  unregister_profile(WEASEL_PROFILE_LANGID);
 }
 
 const GUID SupportCategories0[] = {
@@ -222,7 +206,7 @@ BOOL RegisterServer() {
         // weaselARM64.dll Rewrite the path to point to the redirector.
 
         char wrapperPath[MAX_PATH];
-        StringCbCatA(achFileName, MAX_PATH, "\\..\\weasel.dll");
+        StringCbCatA(achFileName, MAX_PATH, "\\..\\" WEASEL_MODULE_BASE_A ".dll");
         GetFullPathNameA(achFileName, MAX_PATH, wrapperPath, NULL);
         memcpy(achFileName, wrapperPath, MAX_PATH);
       }

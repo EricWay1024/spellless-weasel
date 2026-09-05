@@ -1,4 +1,4 @@
-#include "stdafx.h"
+﻿#include "stdafx.h"
 #include "WeaselTSF.h"
 #include "EditSession.h"
 #include "ResponseParser.h"
@@ -336,6 +336,75 @@ class CInsertTextEditSession : public CEditSession {
   com_ptr<ITfComposition> _pComposition;
 };
 
+// Spellless: a commit may ask for characters already in the document to be
+// removed, by prefixing the text with U+0008 BACKSPACE -- one per character.
+//
+// Rime has no channel for this: a commit is a plain string, and once it has
+// left the IME the text belongs to the application.  The schema needs it so
+// that a word committed with its trailing space can still be followed by
+// punctuation: "hello " + "." should become "hello.", and only the frontend
+// can take that space back.
+//
+// The composition is extended backwards over those characters and the whole
+// range is then replaced, which is the mechanism TSF reconversion uses.
+//
+// It must be done with ITfComposition::ShiftStart, NOT by calling ShiftStart
+// on the range that ITfComposition::GetRange hands back.  That range belongs
+// to the composition: moving its start outside puts it beyond the composition's
+// own extent, and TSF then refuses the SetText.  The commit is lost, and --
+// because _InsertText ignores the edit session's result and _EndComposition is
+// called with clear=false -- the CUAS placeholder space stays in the document.
+// The symptom is one blank per keystroke where the punctuation should be.
+static LONG SpelllessEraseCount(std::wstring& text) {
+  LONG erase = 0;
+  while (erase < static_cast<LONG>(text.length()) && text[erase] == L'\b')
+    ++erase;
+  if (erase)
+    text.erase(0, erase);
+  return erase;
+}
+
+// Extend the composition back over `erase` characters, but only if they really
+// are the whitespace this IME put there.  The caret may have moved since -- a
+// click, an arrow key, an edit elsewhere -- and the schema cannot see that, so
+// what is about to be taken is read back rather than trusted.
+//
+// Nothing here is required to succeed: on any doubt the composition is left
+// where it is and the commit lands on its own, spare space and all.
+static void SpelllessReclaim(TfEditCookie ec,
+                             ITfComposition* pComposition,
+                             ITfRange* pRange,
+                             LONG erase) {
+  com_ptr<ITfRange> pStart;
+  if (FAILED(pRange->Clone(&pStart)))
+    return;
+  if (FAILED(pStart->Collapse(ec, TF_ANCHOR_START)))
+    return;
+
+  LONG shifted = 0;
+  if (FAILED(pStart->ShiftStart(ec, -erase, &shifted, nullptr)))
+    return;
+  const LONG taken = shifted < 0 ? -shifted : shifted;
+  if (taken <= 0)
+    return;  // start of the document: there is nothing behind to reclaim
+
+  std::wstring behind(static_cast<size_t>(taken), L'\0');
+  ULONG fetched = 0;
+  if (FAILED(pStart->GetText(ec, 0, &behind[0], static_cast<ULONG>(taken),
+                             &fetched)) ||
+      fetched != static_cast<ULONG>(taken))
+    return;
+  // Spaces only.  The schema asks for this after committing a space of its
+  // own, so a space is the only thing it can legitimately be taking back; a
+  // tab belongs to the document and to whoever typed it.
+  for (ULONG i = 0; i < fetched; ++i) {
+    if (behind[i] != L' ')
+      return;
+  }
+
+  pComposition->ShiftStart(ec, pStart);
+}
+
 STDMETHODIMP CInsertTextEditSession::DoEditSession(TfEditCookie ec) {
   com_ptr<ITfRange> pRange;
   TF_SELECTION tfSelection;
@@ -345,6 +414,16 @@ STDMETHODIMP CInsertTextEditSession::DoEditSession(TfEditCookie ec) {
     return E_FAIL;
   if (FAILED(_pComposition->GetRange(&pRange)))
     return E_FAIL;
+
+  const LONG erase = SpelllessEraseCount(_text);
+  if (erase > 0) {
+    SpelllessReclaim(ec, _pComposition, pRange, erase);
+    // The composition may now start further back, so ask it again rather than
+    // writing through the range we measured with.
+    pRange.Release();
+    if (FAILED(_pComposition->GetRange(&pRange)))
+      return E_FAIL;
+  }
 
   if (FAILED(pRange->SetText(ec, 0, _text.c_str(),
                              static_cast<LONG>(_text.length()))))

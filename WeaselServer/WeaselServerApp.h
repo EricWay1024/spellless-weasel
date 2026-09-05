@@ -1,4 +1,5 @@
 #pragma once
+#include <WeaselConstants.h>
 
 #include "resource.h"
 #include <resource.h>
@@ -37,7 +38,7 @@ class WeaselServerApp {
     // when checked manually, show testing versions too
     std::string feed_url = GetCustomResource("ManualUpdateFeedURL", "APPCAST");
     std::wstring channel{};
-    auto ret = RegGetStringValue(HKEY_CURRENT_USER, L"Software\\Rime\\Weasel",
+    auto ret = RegGetStringValue(HKEY_CURRENT_USER, WEASEL_REG_KEY,
                                  L"UpdateChannel", channel);
     if (!ret && channel == L"testing") {
       feed_url = GetCustomResource("TestingManualUpdateFeedURL", "APPCAST");

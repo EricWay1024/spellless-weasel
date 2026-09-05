@@ -1,4 +1,5 @@
 ﻿#pragma once
+#include <WeaselConstants.h>
 #include <filesystem>
 #include <string>
 #include <sstream>
@@ -186,18 +187,13 @@ inline std::basic_string<CharT> unescape_string(
 // resource
 std::string GetCustomResource(const char* name, const char* type);
 
+// The name Windows shows in the language bar and the input-method picker.
+//
+// Not localised, and deliberately not Weasel's: this build is installed
+// *beside* a stock Weasel, and two entries both reading "Weasel" would be
+// impossible to tell apart in the switcher.
 inline std::wstring get_weasel_ime_name() {
-  LANGID langId = GetUserDefaultUILanguage();
-
-  if (langId == MAKELANGID(LANG_CHINESE, SUBLANG_CHINESE_TRADITIONAL) ||
-      langId == MAKELANGID(LANG_CHINESE, SUBLANG_CHINESE_SIMPLIFIED) ||
-      langId == MAKELANGID(LANG_CHINESE, SUBLANG_CHINESE_HONGKONG) ||
-      langId == MAKELANGID(LANG_CHINESE, SUBLANG_CHINESE_SINGAPORE) ||
-      langId == MAKELANGID(LANG_CHINESE, SUBLANG_CHINESE_MACAU)) {
-    return L"小狼毫";
-  } else {
-    return L"Weasel";
-  }
+  return WEASEL_CODE_NAME_W;
 }
 
 inline LONG RegGetStringValue(HKEY key,
@@ -217,7 +213,7 @@ inline LONG RegGetStringValue(HKEY key,
 
 inline LANGID get_language_id() {
   std::wstring lang{};
-  if (RegGetStringValue(HKEY_CURRENT_USER, L"Software\\Rime\\Weasel",
+  if (RegGetStringValue(HKEY_CURRENT_USER, WEASEL_REG_KEY,
                         L"Language", lang) == ERROR_SUCCESS) {
     if (lang == L"chs")
       return MAKELANGID(LANG_CHINESE, SUBLANG_CHINESE_SIMPLIFIED);

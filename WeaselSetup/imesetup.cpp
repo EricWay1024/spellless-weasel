@@ -8,28 +8,26 @@
 #include <WeaselUtility.h>
 #include "InstallOptionsDlg.h"
 
-// {A3F4CDED-B1E9-41EE-9CA6-7B4D0DE6CB0A}
+// {6ECD9DA4-3390-4F2D-8F8C-CC46E3A93F02} -- WEASEL_CLSID_TEXTSERVICE_STR
 static const GUID c_clsidTextService = {
-    0xa3f4cded,
-    0xb1e9,
-    0x41ee,
-    {0x9c, 0xa6, 0x7b, 0x4d, 0xd, 0xe6, 0xcb, 0xa}};
+    0x6ecd9da4,
+    0x3390,
+    0x4f2d,
+    {0x8f, 0x8c, 0xcc, 0x46, 0xe3, 0xa9, 0x3f, 0x02}};
 
-// {3D02CAB6-2B8E-4781-BA20-1C9267529467}
+// {82FA79D7-0667-4779-B842-1D4ABD996B38} -- WEASEL_GUID_PROFILE_STR
 static const GUID c_guidProfile = {
-    0x3d02cab6,
-    0x2b8e,
-    0x4781,
-    {0xba, 0x20, 0x1c, 0x92, 0x67, 0x52, 0x94, 0x67}};
+    0x82fa79d7,
+    0x0667,
+    0x4779,
+    {0xb8, 0x42, 0x1d, 0x4a, 0xbd, 0x99, 0x6b, 0x38}};
 
-// if in the future, option hant is extended, maybe a function to generate this
-// info is required
-#define PSZTITLE_HANS                                                     \
-  L"0804:{A3F4CDED-B1E9-41EE-9CA6-7B4D0DE6CB0A}{3D02CAB6-2B8E-4781-BA20-" \
-  L"1C9267529467}"
-#define PSZTITLE_HANT                                                     \
-  L"0404:{A3F4CDED-B1E9-41EE-9CA6-7B4D0DE6CB0A}{3D02CAB6-2B8E-4781-BA20-" \
-  L"1C9267529467}"
+// InstallLayoutOrTip takes the profile as "<langid>:<clsid><profile guid>".
+// Spelt out of the shared macros, because getting it wrong here means acting
+// on somebody else's text service -- and ILOT_UNINSTALL would then remove it.
+#define PSZTITLE                                          \
+  WEASEL_PROFILE_LANGID_STR L":" WEASEL_CLSID_TEXTSERVICE_STR \
+      WEASEL_GUID_PROFILE_STR
 #define ILOT_UNINSTALL 0x00000001
 typedef HRESULT(WINAPI* PTF_INSTALLLAYOUTORTIP)(LPCWSTR psz, DWORD dwFlags);
 
@@ -126,7 +124,7 @@ int install_ime_file(std::wstring& srcPath,
   WCHAR path[MAX_PATH];
   GetModuleFileNameW(GetModuleHandle(NULL), path, _countof(path));
 
-  std::wstring srcFileName = L"weasel";
+  std::wstring srcFileName = WEASEL_MODULE_BASE;
 
   srcFileName += ext;
   WCHAR drive[_MAX_DRIVE];
@@ -136,7 +134,7 @@ int install_ime_file(std::wstring& srcPath,
   srcPath = std::wstring(drive) + dir + srcFileName;
 
   GetSystemDirectoryW(path, _countof(path));
-  std::wstring destPath = std::wstring(path) + L"\\weasel" + ext;
+  std::wstring destPath = std::wstring(path) + L"\\" WEASEL_MODULE_BASE + ext;
 
   int retval = 0;
   // 复制 .dll/.ime 到系统目录
@@ -168,7 +166,7 @@ int install_ime_file(std::wstring& srcPath,
         std::wstring srcPathARM32 = srcPath;
         ireplace_last(srcPathARM32, ext, L"ARM" + ext);
 
-        std::wstring destPathARM32 = std::wstring(sysarm32) + L"\\weasel" + ext;
+        std::wstring destPathARM32 = std::wstring(sysarm32) + L"\\" WEASEL_MODULE_BASE + ext;
         if (!copy_file(srcPathARM32, destPathARM32)) {
           MSG_NOT_SILENT_ID_CAP(silent, destPathARM32.c_str(),
                                 IDS_STR_INSTALL_FAILED, MB_ICONERROR | MB_OK);
@@ -205,7 +203,7 @@ int install_ime_file(std::wstring& srcPath,
 
       // Since weaselARM64X is just a redirector we don't have separate
       // HANS and HANT variants.
-      srcPath = std::wstring(drive) + dir + L"weaselARM64X" + ext;
+      srcPath = std::wstring(drive) + dir + WEASEL_MODULE_BASE L"ARM64X" + ext;
     } else {
       ireplace_last(srcPath, ext, L"x64" + ext);
     }
@@ -232,7 +230,7 @@ int uninstall_ime_file(const std::wstring& ext,
   WCHAR path[MAX_PATH];
   GetSystemDirectoryW(path, _countof(path));
   std::wstring imePath(path);
-  imePath += L"\\weasel" + ext;
+  imePath += L"\\" WEASEL_MODULE_BASE + ext;
   retval += func(imePath, false, false, false, false, silent);
   delete_file(imePath);
   if (is_wow64()) {
@@ -247,7 +245,7 @@ int uninstall_ime_file(const std::wstring& ext,
     if (is_arm64_machine()) {
       WCHAR sysarm32[MAX_PATH];
       if (get_wow_arm32_system_dir(sysarm32, _countof(sysarm32)) > 0) {
-        std::wstring imePathARM32 = std::wstring(sysarm32) + L"\\weasel" + ext;
+        std::wstring imePathARM32 = std::wstring(sysarm32) + L"\\" WEASEL_MODULE_BASE + ext;
         retval += func(imePathARM32, false, true, true, false, silent);
         delete_file(imePathARM32);
       }
@@ -306,7 +304,7 @@ int register_ime(const std::wstring& ime_path,
             ret = RegQueryValueEx(hSubKey, L"Ime File", NULL, &type,
                                   (LPBYTE)imeFile, &len);
             if (ret = ERROR_SUCCESS) {
-              if (_wcsicmp(imeFile, L"weasel.ime") == 0) {
+              if (_wcsicmp(imeFile, WEASEL_MODULE_BASE L".ime") == 0) {
                 hKL = (HKL)k;  // already there
               }
             }
@@ -315,7 +313,7 @@ int register_ime(const std::wstring& ime_path,
             // found a spare number to register
             ret = RegCreateKey(hKey, hkl_str, &hSubKey);
             if (ret == ERROR_SUCCESS) {
-              const WCHAR ime_file[] = L"weasel.ime";
+              const WCHAR ime_file[] = WEASEL_MODULE_BASE L".ime";
               RegSetValueEx(hSubKey, L"Ime File", 0, REG_SZ, (LPBYTE)ime_file,
                             sizeof(ime_file));
               const WCHAR layout_file[] = L"kbdus.dll";
@@ -401,7 +399,7 @@ int register_ime(const std::wstring& ime_path,
         continue;
 
       // 小狼毫?
-      if (_wcsicmp(imeFile, L"weasel.ime") == 0) {
+      if (_wcsicmp(imeFile, WEASEL_MODULE_BASE L".ime") == 0) {
         DWORD value;
         swscanf_s(subKey, L"%x", &value);
         UnloadKeyboardLayout((HKL)value);
@@ -459,12 +457,15 @@ void enable_profile(BOOL fEnable, bool hant) {
                         (LPVOID*)&pProfiles);
 
   if (SUCCEEDED(hr)) {
-    LANGID lang_id = hant ? 0x0404 : 0x0804;
+    LANGID lang_id = WEASEL_PROFILE_LANGID;
     if (fEnable) {
       pProfiles->EnableLanguageProfile(c_clsidTextService, lang_id,
                                        c_guidProfile, fEnable);
-      pProfiles->EnableLanguageProfileByDefault(c_clsidTextService, lang_id,
-                                                c_guidProfile, fEnable);
+      // Deliberately not EnableLanguageProfileByDefault: that would make
+      // Spellless the default input method for English, so every application
+      // would start in it.  Weasel can do that because it is the only way to
+      // type Chinese; Spellless competes with the plain keyboard, and which
+      // one leads is the user's choice to make in Windows settings.
     } else {
       pProfiles->RemoveLanguageProfile(c_clsidTextService, lang_id,
                                        c_guidProfile);
@@ -588,9 +589,9 @@ int install(bool hant, bool silent, bool old_ime_support) {
         (PTF_INSTALLLAYOUTORTIP)GetProcAddress(hInputDLL, "InstallLayoutOrTip");
     if (pfnInstallLayoutOrTip) {
       if (hant)
-        (*pfnInstallLayoutOrTip)(PSZTITLE_HANT, 0);
+        (*pfnInstallLayoutOrTip)(PSZTITLE, 0);
       else
-        (*pfnInstallLayoutOrTip)(PSZTITLE_HANS, 0);
+        (*pfnInstallLayoutOrTip)(PSZTITLE, 0);
     }
     FreeLibrary(hInputDLL);
   }
@@ -623,7 +624,7 @@ int uninstall(bool silent) {
   // 注销输入法
   int retval = 0;
 
-  const WCHAR KEY[] = L"Software\\Rime\\Weasel";
+  const WCHAR KEY[] = WEASEL_REG_KEY;
   HKEY hKey;
   LSTATUS ret = RegOpenKey(HKEY_CURRENT_USER, KEY, &hKey);
   if (ret == ERROR_SUCCESS) {
@@ -639,9 +640,9 @@ int uninstall(bool silent) {
             hInputDLL, "InstallLayoutOrTip");
         if (pfnInstallLayoutOrTip) {
           if (data != 0)
-            (*pfnInstallLayoutOrTip)(PSZTITLE_HANT, ILOT_UNINSTALL);
+            (*pfnInstallLayoutOrTip)(PSZTITLE, ILOT_UNINSTALL);
           else
-            (*pfnInstallLayoutOrTip)(PSZTITLE_HANS, ILOT_UNINSTALL);
+            (*pfnInstallLayoutOrTip)(PSZTITLE, ILOT_UNINSTALL);
         }
         FreeLibrary(hInputDLL);
       }
@@ -675,7 +676,7 @@ bool has_installed() {
   WCHAR path[MAX_PATH];
   GetSystemDirectory(path, _countof(path));
   std::wstring sysPath(path);
-  DWORD attr = GetFileAttributesW((sysPath + L"\\weasel.dll").c_str());
+  DWORD attr = GetFileAttributesW((sysPath + L"\\" WEASEL_MODULE_BASE L".dll").c_str());
   return (attr != INVALID_FILE_ATTRIBUTES &&
           !(attr & FILE_ATTRIBUTE_DIRECTORY));
 }

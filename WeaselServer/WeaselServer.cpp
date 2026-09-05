@@ -15,6 +15,7 @@
 #include <WinUser.h>
 #include <memory>
 #include <atlstr.h>
+#include <fstream>
 #pragma comment(lib, "Shcore.lib")
 CAppModule _Module;
 
@@ -118,8 +119,15 @@ int WINAPI _tWinMain(HINSTANCE hInstance,
     WeaselServerApp app;
     RegisterApplicationRestart(NULL, 0);
     nRet = app.Run();
+  } catch (const std::exception& e) {
+    // "bad luck" told nobody anything: the server exits -1 before glog is up,
+    // so this is the only place the reason exists.
+    std::ofstream(WeaselUserDataPath() / "spellless_startup_error.txt")
+        << "WeaselServerApp threw: " << e.what() << std::endl;
+    nRet = -1;
   } catch (...) {
-    // bad luck...
+    std::ofstream(WeaselUserDataPath() / "spellless_startup_error.txt")
+        << "WeaselServerApp threw a non-std exception" << std::endl;
     nRet = -1;
   }
 

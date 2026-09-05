@@ -114,9 +114,9 @@ int Configurator::Run(bool installing) {
 }
 
 int Configurator::UpdateWorkspace(bool report_errors) {
-  HANDLE hMutex = CreateMutex(NULL, TRUE, L"WeaselDeployerMutex");
+  HANDLE hMutex = CreateMutex(NULL, TRUE, L"SpelllessDeployerMutex");
   if (!hMutex) {
-    LOG(ERROR) << "Error creating WeaselDeployerMutex.";
+    LOG(ERROR) << "Error creating SpelllessDeployerMutex.";
     return 1;
   }
   if (GetLastError() == ERROR_ALREADY_EXISTS) {
@@ -156,9 +156,9 @@ int Configurator::UpdateWorkspace(bool report_errors) {
 }
 
 int Configurator::DictManagement() {
-  HANDLE hMutex = CreateMutex(NULL, TRUE, L"WeaselDeployerMutex");
+  HANDLE hMutex = CreateMutex(NULL, TRUE, L"SpelllessDeployerMutex");
   if (!hMutex) {
-    LOG(ERROR) << "Error creating WeaselDeployerMutex.";
+    LOG(ERROR) << "Error creating SpelllessDeployerMutex.";
     return 1;
   }
   if (GetLastError() == ERROR_ALREADY_EXISTS) {
@@ -196,9 +196,9 @@ int Configurator::DictManagement() {
 }
 
 int Configurator::SyncUserData() {
-  HANDLE hMutex = CreateMutex(NULL, TRUE, L"WeaselDeployerMutex");
+  HANDLE hMutex = CreateMutex(NULL, TRUE, L"SpelllessDeployerMutex");
   if (!hMutex) {
-    LOG(ERROR) << "Error creating WeaselDeployerMutex.";
+    LOG(ERROR) << "Error creating SpelllessDeployerMutex.";
     return 1;
   }
   if (GetLastError() == ERROR_ALREADY_EXISTS) {
