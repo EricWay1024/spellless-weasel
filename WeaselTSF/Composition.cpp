@@ -374,7 +374,8 @@ static LONG SpelllessEraseCount(std::wstring& text) {
 static void SpelllessReclaim(TfEditCookie ec,
                              ITfComposition* pComposition,
                              ITfRange* pRange,
-                             LONG erase) {
+                             LONG erase,
+                             const std::wstring& replacement) {
   com_ptr<ITfRange> pStart;
   if (FAILED(pRange->Clone(&pStart)))
     return;
@@ -394,15 +395,43 @@ static void SpelllessReclaim(TfEditCookie ec,
                              &fetched)) ||
       fetched != static_cast<ULONG>(taken))
     return;
-  // Spaces only.  The schema asks for this after committing a space of its
-  // own, so a space is the only thing it can legitimately be taking back; a
-  // tab belongs to the document and to whoever typed it.
-  for (ULONG i = 0; i < fetched; ++i) {
+  // Three things may legitimately be reclaimed, and nothing else.  The schema
+  // reads this same text through SurroundingText.cpp before it decides, so a
+  // disagreement here means the document moved underneath us -- a click, an
+  // arrow key -- and the safe answer is to leave it alone.
+  bool allowed = true;
+
+  //   1. Whitespace this input method wrote itself, so punctuation can sit
+  //      flush against the word before it: "hello " + "." -> "hello. ".
+  for (ULONG i = 0; i < fetched && allowed; ++i) {
     if (behind[i] != L' ')
-      return;
+      allowed = false;
   }
 
-  pComposition->ShiftStart(ec, pStart);
+  //   2. The opening of the text being inserted, which is how a word being
+  //      re-typed is picked up: "so" is replaced by "sooner".  Self-checking,
+  //      because a wrong guess simply will not match.
+  if (!allowed && replacement.length() >= fetched) {
+    allowed = true;
+    for (ULONG i = 0; i < fetched; ++i) {
+      if (towlower(behind[i]) != towlower(replacement[i]))
+        allowed = false;
+    }
+  }
+
+  //   3. A bare word, when nothing is being inserted: Backspace twice to
+  //      delete the whole word.  Letters only, so a newline or a sentence's
+  //      punctuation can never be taken by accident.
+  if (!allowed && replacement.empty()) {
+    allowed = true;
+    for (ULONG i = 0; i < fetched; ++i) {
+      if (!iswalpha(behind[i]) && behind[i] != L'\'')
+        allowed = false;
+    }
+  }
+
+  if (allowed)
+    pComposition->ShiftStart(ec, pStart);
 }
 
 STDMETHODIMP CInsertTextEditSession::DoEditSession(TfEditCookie ec) {
@@ -416,8 +445,8 @@ STDMETHODIMP CInsertTextEditSession::DoEditSession(TfEditCookie ec) {
     return E_FAIL;
 
   const LONG erase = SpelllessEraseCount(_text);
-  if (erase > 0) {
-    SpelllessReclaim(ec, _pComposition, pRange, erase);
+  if (erase > 0 && erase <= 64) {
+    SpelllessReclaim(ec, _pComposition, pRange, erase, _text);
     // The composition may now start further back, so ask it again rather than
     // writing through the range we measured with.
     pRange.Release();

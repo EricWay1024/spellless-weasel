@@ -58,6 +58,8 @@ struct RequestHandler {
   virtual DWORD FindSession(DWORD session_id) { return 0; }
   virtual DWORD AddSession(LPWSTR buffer, EatLine eat = 0) { return 0; }
   virtual DWORD RemoveSession(DWORD session_id) { return 0; }
+  // Spellless: what the frontend read from the document before this key.
+  virtual void UpdateSurroundingText(LPWSTR buffer, DWORD ipc_id) {}
   virtual BOOL ProcessKeyEvent(KeyEvent keyEvent,
                                DWORD session_id,
                                EatLine eat) {
@@ -122,6 +124,9 @@ class Client {
   bool Echo();
   // 请求服务处理按键消息
   bool ProcessKeyEvent(KeyEvent const& keyEvent);
+  // Spellless: the text just before the caret, written into the channel that
+  // the next ProcessKeyEvent already sends, so it costs no extra round trip.
+  void SetSurroundingText(std::wstring const& text);
   // 上屏正在編輯的文字
   bool CommitComposition();
   // 清除正在編輯的文字

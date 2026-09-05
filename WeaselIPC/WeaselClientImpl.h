@@ -18,6 +18,7 @@ class ClientImpl {
   void EndMaintenance();
   bool Echo();
   bool ProcessKeyEvent(KeyEvent const& keyEvent);
+  void SetSurroundingText(std::wstring const& text);
   bool CommitComposition();
   bool ClearComposition();
   bool SelectCandidateOnCurrentPage(size_t index);

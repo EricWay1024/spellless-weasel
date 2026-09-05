@@ -463,6 +463,7 @@
     <ClCompile Include="KeyEventSink.cpp" />
     <ClCompile Include="LanguageBar.cpp" />
     <ClCompile Include="Register.cpp" />
+    <ClCompile Include="SurroundingText.cpp" />
     <ClCompile Include="Server.cpp" />
     <ClCompile Include="stdafx.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>

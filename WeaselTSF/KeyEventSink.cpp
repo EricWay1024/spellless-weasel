@@ -8,7 +8,10 @@ static weasel::KeyEvent prevKeyEvent;
 static BOOL prevfEaten = FALSE;
 static int keyCountToSimulate = 0;
 
-void WeaselTSF::_ProcessKeyEvent(WPARAM wParam, LPARAM lParam, BOOL* pfEaten) {
+void WeaselTSF::_ProcessKeyEvent(com_ptr<ITfContext> pContext,
+                                 WPARAM wParam,
+                                 LPARAM lParam,
+                                 BOOL* pfEaten) {
   // when _IsKeyboardDisabled don't eat the key,
   // when keyboard closable and keyboard closed, don't eat the key
   if ((_isToOpenClose && !_IsKeyboardOpen()) || _IsKeyboardDisabled()) {
@@ -34,8 +37,12 @@ void WeaselTSF::_ProcessKeyEvent(WPARAM wParam, LPARAM lParam, BOOL* pfEaten) {
       else if (ke.keycode == ibus::Down)
         ke.keycode = ibus::Up;
     }
-    if (!keyCountToSimulate)
+    if (!keyCountToSimulate) {
+      // Spellless: what the document actually holds, read before the key goes
+      // out so the schema decides on fact rather than on its own history.
+      m_client.SetSurroundingText(_ReadSurroundingText(pContext));
       *pfEaten = (BOOL)m_client.ProcessKeyEvent(ke);
+    }
 
     if (ke.keycode == ibus::Caps_Lock) {
       if (prevKeyEvent.keycode == ibus::Caps_Lock && prevfEaten == TRUE &&
@@ -92,7 +99,7 @@ STDAPI WeaselTSF::OnTestKeyDown(ITfContext* pContext,
     *pfEaten = TRUE;
     return S_OK;
   }
-  _ProcessKeyEvent(wParam, lParam, pfEaten);
+  _ProcessKeyEvent(pContext, wParam, lParam, pfEaten);
   _UpdateComposition(pContext);
   if (*pfEaten)
     _fTestKeyDownPending = TRUE;
@@ -108,7 +115,7 @@ STDAPI WeaselTSF::OnKeyDown(ITfContext* pContext,
     _fTestKeyDownPending = FALSE;
     *pfEaten = TRUE;
   } else {
-    _ProcessKeyEvent(wParam, lParam, pfEaten);
+    _ProcessKeyEvent(pContext, wParam, lParam, pfEaten);
     _UpdateComposition(pContext);
   }
   return S_OK;
@@ -123,7 +130,7 @@ STDAPI WeaselTSF::OnTestKeyUp(ITfContext* pContext,
     *pfEaten = TRUE;
     return S_OK;
   }
-  _ProcessKeyEvent(wParam, lParam, pfEaten);
+  _ProcessKeyEvent(pContext, wParam, lParam, pfEaten);
   _UpdateComposition(pContext);
   if (*pfEaten)
     _fTestKeyUpPending = TRUE;
@@ -139,7 +146,7 @@ STDAPI WeaselTSF::OnKeyUp(ITfContext* pContext,
     _fTestKeyUpPending = FALSE;
     *pfEaten = TRUE;
   } else {
-    _ProcessKeyEvent(wParam, lParam, pfEaten);
+    _ProcessKeyEvent(pContext, wParam, lParam, pfEaten);
     if (!_async_edit)
       _UpdateComposition(pContext);
   }

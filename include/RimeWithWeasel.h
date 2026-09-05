@@ -41,6 +41,7 @@ class RimeWithWeaselHandler : public weasel::RequestHandler {
   virtual DWORD FindSession(WeaselSessionId ipc_id);
   virtual DWORD AddSession(LPWSTR buffer, EatLine eat = 0);
   virtual DWORD RemoveSession(WeaselSessionId ipc_id);
+  virtual void UpdateSurroundingText(LPWSTR buffer, WeaselSessionId ipc_id);
   virtual BOOL ProcessKeyEvent(weasel::KeyEvent keyEvent,
                                WeaselSessionId ipc_id,
                                EatLine eat);

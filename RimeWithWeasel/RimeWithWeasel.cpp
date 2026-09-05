@@ -303,6 +303,37 @@ void RimeWithWeaselHandler::UpdateColorTheme(BOOL darkMode) {
   m_ui->style() = get_session_status(m_active_session).style;
 }
 
+// Spellless: hand the document's own text to the schema.
+//
+// Rime's commit history records what this input method committed, not what is
+// in front of the caret.  librime clears it on Backspace and Return, it never
+// hears about a click or an arrow key, and it cannot see anything typed while
+// another input method was active.  A schema reading this property is looking
+// at the document instead of guessing at it.
+void RimeWithWeaselHandler::UpdateSurroundingText(LPWSTR buffer,
+                                                  WeaselSessionId ipc_id) {
+  if (m_disabled || !buffer)
+    return;
+  SessionStatus& session_status = get_session_status(ipc_id);
+  RimeSessionId session_id = session_status.session_id;
+  if (!session_id)
+    return;
+
+  std::wstring surrounding;
+  wbufferstream bs(buffer, WEASEL_IPC_BUFFER_LENGTH);
+  std::wstring line;
+  const std::wstring kKey = L"context.surrounding=";
+  while (bs.good()) {
+    std::getline(bs, line);
+    if (!bs.good() || line == L".")
+      break;
+    if (starts_with(line, kKey))
+      surrounding = unescape_string(line.substr(kKey.length()));
+  }
+  rime_api->set_property(session_id, "surrounding_text",
+                         wtou8(surrounding).c_str());
+}
+
 BOOL RimeWithWeaselHandler::ProcessKeyEvent(KeyEvent keyEvent,
                                             WeaselSessionId ipc_id,
                                             EatLine eat) {

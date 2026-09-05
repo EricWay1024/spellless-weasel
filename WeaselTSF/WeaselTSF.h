@@ -169,7 +169,13 @@ class WeaselTSF : public ITfTextInputProcessorEx,
 
   BOOL _InitKeyEventSink();
   void _UninitKeyEventSink();
-  void _ProcessKeyEvent(WPARAM wParam, LPARAM lParam, BOOL* pfEaten);
+  void _ProcessKeyEvent(com_ptr<ITfContext> pContext,
+                        WPARAM wParam,
+                        LPARAM lParam,
+                        BOOL* pfEaten);
+  // Spellless: the few characters before the caret, so the input method can
+  // read the document instead of guessing at it from its own commit history.
+  std::wstring _ReadSurroundingText(com_ptr<ITfContext> pContext);
 
   BOOL _InitPreservedKey();
   void _UninitPreservedKey();

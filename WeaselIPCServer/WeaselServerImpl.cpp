@@ -206,6 +206,24 @@ DWORD ServerImpl::OnStartSession(WEASEL_IPC_COMMAND uMsg,
       });
 }
 
+DWORD ServerImpl::OnKeyEventWithContext(WEASEL_IPC_COMMAND uMsg,
+                                        DWORD wParam,
+                                        DWORD lParam) {
+  OnSurroundingText(uMsg, wParam, lParam);
+  return OnKeyEvent(uMsg, wParam, lParam);
+}
+
+// Spellless: the client writes what it read from the document into the same
+// buffer the key event travels with, so this costs no extra round trip.
+DWORD ServerImpl::OnSurroundingText(WEASEL_IPC_COMMAND uMsg,
+                                    DWORD wParam,
+                                    DWORD lParam) {
+  if (m_pRequestHandler)
+    m_pRequestHandler->UpdateSurroundingText(
+        reinterpret_cast<LPWSTR>(channel->ReceiveBuffer()), lParam);
+  return 0;
+}
+
 DWORD ServerImpl::OnEndSession(WEASEL_IPC_COMMAND uMsg,
                                DWORD wParam,
                                DWORD lParam) {
@@ -384,7 +402,7 @@ void ServerImpl::HandlePipeMessage(PipeMessage pipe_msg, _Resp resp) {
   PIPE_MSG_HANDLE(WEASEL_IPC_ECHO, OnEcho)
   PIPE_MSG_HANDLE(WEASEL_IPC_START_SESSION, OnStartSession)
   PIPE_MSG_HANDLE(WEASEL_IPC_END_SESSION, OnEndSession)
-  PIPE_MSG_HANDLE(WEASEL_IPC_PROCESS_KEY_EVENT, OnKeyEvent)
+  PIPE_MSG_HANDLE(WEASEL_IPC_PROCESS_KEY_EVENT, OnKeyEventWithContext)
   PIPE_MSG_HANDLE(WEASEL_IPC_SHUTDOWN_SERVER, OnShutdownServer)
   PIPE_MSG_HANDLE(WEASEL_IPC_FOCUS_IN, OnFocusIn)
   PIPE_MSG_HANDLE(WEASEL_IPC_FOCUS_OUT, OnFocusOut)

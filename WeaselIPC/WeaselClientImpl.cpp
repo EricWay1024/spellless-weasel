@@ -1,6 +1,7 @@
 ﻿#include "stdafx.h"
 #include "WeaselClientImpl.h"
 #include <StringAlgorithm.hpp>
+#include <WeaselUtility.h>
 
 using namespace weasel;
 
@@ -62,6 +63,16 @@ bool ClientImpl::ProcessKeyEvent(KeyEvent const& keyEvent) {
   LRESULT ret =
       _SendMessage(WEASEL_IPC_PROCESS_KEY_EVENT, keyEvent, session_id);
   return ret != 0;
+}
+
+void ClientImpl::SetSurroundingText(std::wstring const& text) {
+  if (!_Active())
+    return;
+  // Written unconditionally, empty included: the buffer is shared and a stale
+  // value would be read as though it were this keystroke's.
+  channel << L"action=context\n";
+  channel << L"context.surrounding=" << escape_string(text).c_str() << L"\n";
+  channel << L".\n";
 }
 
 bool ClientImpl::CommitComposition() {
@@ -218,6 +229,10 @@ void Client::Disconnect() {
 
 void Client::ShutdownServer() {
   m_pImpl->ShutdownServer();
+}
+
+void Client::SetSurroundingText(std::wstring const& text) {
+  m_pImpl->SetSurroundingText(text);
 }
 
 bool Client::ProcessKeyEvent(KeyEvent const& keyEvent) {
